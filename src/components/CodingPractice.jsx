@@ -16,6 +16,7 @@ import {
   message,
   Statistic,
   Form,
+  Checkbox,
 } from "antd";
 import {
   CodeOutlined,
@@ -26,6 +27,7 @@ import {
   FilterOutlined,
   PlusOutlined,
   DeleteOutlined,
+  ClockCircleOutlined,
 } from "@ant-design/icons";
 import {
   db,
@@ -393,6 +395,165 @@ const CodingPractice = ({ darkMode }) => {
     </div>
   );
 
+  const renderTopicsList = () => {
+    // Group problems by topic
+    const topicsMap = problems.reduce((acc, problem) => {
+      const topic = problem.topic || "Uncategorized";
+      if (!acc[topic]) {
+        acc[topic] = [];
+      }
+      acc[topic].push(problem);
+      return acc;
+    }, {});
+
+    const sortedTopics = Object.entries(topicsMap).sort((a, b) =>
+      a[0].localeCompare(b[0])
+    );
+
+    return (
+      <div className="space-y-6">
+        {sortedTopics.map(([topic, topicProblems]) => {
+          const completedCount = topicProblems.filter(
+            (p) => p.completed
+          ).length;
+          const progress = (completedCount / topicProblems.length) * 100;
+
+          return (
+            <Card
+              key={topic}
+              className={darkMode ? "bg-gray-800 text-white" : ""}
+              title={
+                <div className="flex items-center justify-between">
+                  <Space>
+                    <span className="font-medium text-lg">{topic}</span>
+                    <Tag color="blue">{topicProblems.length} problems</Tag>
+                  </Space>
+                  <Space>
+                    <Badge
+                      status="success"
+                      text={
+                        <span className={darkMode ? "text-white" : ""}>
+                          {completedCount} Completed
+                        </span>
+                      }
+                    />
+                    <Badge
+                      status="processing"
+                      text={
+                        <span className={darkMode ? "text-white" : ""}>
+                          {topicProblems.length - completedCount} Pending
+                        </span>
+                      }
+                    />
+                    <Progress
+                      percent={Math.round(progress)}
+                      size="small"
+                      status={progress === 100 ? "success" : "active"}
+                      style={{ width: 100 }}
+                    />
+                  </Space>
+                </div>
+              }
+            >
+              <List
+                dataSource={topicProblems}
+                renderItem={(problem) => (
+                  <List.Item
+                    className={darkMode ? "border-gray-700" : ""}
+                    actions={[
+                      <Tooltip title="Toggle Status">
+                        <Button
+                          type={problem.completed ? "primary" : "default"}
+                          icon={<CheckCircleOutlined />}
+                          onClick={() =>
+                            toggleProblemStatus(problem.id, problem.completed)
+                          }
+                        />
+                      </Tooltip>,
+                      <Tooltip title="Delete">
+                        <Popconfirm
+                          title="Delete this problem?"
+                          onConfirm={() => deleteProblem(problem.id)}
+                          okText="Yes"
+                          cancelText="No"
+                        >
+                          <Button
+                            type="text"
+                            danger
+                            icon={<DeleteOutlined />}
+                          />
+                        </Popconfirm>
+                      </Tooltip>,
+                      <Button
+                        type="link"
+                        href={problem.url}
+                        target="_blank"
+                        icon={<RightOutlined />}
+                      >
+                        Solve
+                      </Button>,
+                    ]}
+                  >
+                    <List.Item.Meta
+                      avatar={
+                        <Checkbox
+                          checked={problem.completed}
+                          onChange={() =>
+                            toggleProblemStatus(problem.id, problem.completed)
+                          }
+                        />
+                      }
+                      title={
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`${
+                              problem.completed ? "line-through opacity-50" : ""
+                            }`}
+                          >
+                            {problem.title}
+                          </span>
+                          <Tag color="blue">{problem.platform}</Tag>
+                          <Tag
+                            color={
+                              problem.difficulty === "Easy"
+                                ? "success"
+                                : problem.difficulty === "Medium"
+                                ? "warning"
+                                : "error"
+                            }
+                          >
+                            {problem.difficulty}
+                          </Tag>
+                        </div>
+                      }
+                      description={
+                        <Space size="small">
+                          {problem.completed ? (
+                            <Tag color="success" icon={<CheckCircleOutlined />}>
+                              Done
+                            </Tag>
+                          ) : (
+                            <Tag
+                              color="processing"
+                              icon={<ClockCircleOutlined />}
+                            >
+                              Pending
+                            </Tag>
+                          )}
+                          <span>Problem #{problem.number}</span>
+                        </Space>
+                      }
+                    />
+                  </List.Item>
+                )}
+              />
+            </Card>
+          );
+        })}
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
       <Tabs
@@ -415,6 +576,15 @@ const CodingPractice = ({ darkMode }) => {
               </span>
             ),
             children: renderProblemsList(),
+          },
+          {
+            key: "topics",
+            label: (
+              <span>
+                <FilterOutlined /> Topics
+              </span>
+            ),
+            children: renderTopicsList(),
           },
         ]}
       />
